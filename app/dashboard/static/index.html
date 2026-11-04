@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10151f">
+  <title>Excavadora IoT · Centro de control</title>
+  <link rel="stylesheet" href="/dashboard/assets/css/dashboard.css">
+</head>
+<body>
+  <div class="login-screen" id="login-screen">
+    <div class="login-card">
+      <div class="brand-mark large">EX</div>
+      <div class="eyebrow">PLATAFORMA DE CONTROL</div>
+      <h1>Excavadora <span>IoT</span></h1>
+      <p class="muted">Inicia sesión con tu clave de control o administración.</p>
+      <form id="login-form" class="stack-form">
+        <label for="api-key-input">Clave de acceso</label>
+        <div class="password-wrap">
+          <input id="api-key-input" name="api_key" type="password" autocomplete="current-password" placeholder="Introduce tu API key" required>
+          <button class="icon-button" id="toggle-key" type="button" aria-label="Mostrar u ocultar clave">◉</button>
+        </div>
+        <button class="primary-button full-width" type="submit">Entrar al centro de control <span>→</span></button>
+        <p class="form-error" id="login-error" role="alert"></p>
+      </form>
+      <div class="login-foot"><span class="status-dot green"></span> Acceso protegido · Sesión temporal</div>
+    </div>
+    <div class="login-decoration decoration-one"></div>
+    <div class="login-decoration decoration-two"></div>
+  </div>
+
+  <div class="app-shell" id="app-shell" hidden>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark">EX</div>
+        <div><strong>EXCAVADORA</strong><small>IoT CONTROL SYSTEM</small></div>
+      </div>
+      <div class="side-label">PLATAFORMA</div>
+      <nav class="side-nav" aria-label="Navegación principal">
+        <button class="nav-item active" data-page="control"><span class="nav-icon">⌘</span><span>Control</span></button>
+        <button class="nav-item" data-page="demos"><span class="nav-icon">▤</span><span>Secuencias DEMO</span></button>
+        <button class="nav-item" data-page="history"><span class="nav-icon">◷</span><span>Historial</span></button>
+        <button class="nav-item admin-only" data-page="admin" hidden><span class="nav-icon">⚙</span><span>Administración</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-help">
+          <div class="help-icon">i</div>
+          <div><strong>Centro de control</strong><small>Panel conectado a FastAPI</small></div>
+        </div>
+        <div class="sidebar-version">DASHBOARD v1.0 <span>•</span> API v1.1</div>
+      </div>
+    </aside>
+
+    <div class="main-shell">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu icon-button" id="mobile-menu" type="button" aria-label="Abrir menú">☰</button>
+          <div class="breadcrumb">Plataforma <span>/</span> <strong id="breadcrumb-current">Control del vehículo</strong></div>
+        </div>
+        <div class="topbar-right">
+          <div class="connection-pill" id="api-status"><span class="status-dot gray"></span><span>API verificando</span></div>
+          <div class="connection-pill" id="ws-status"><span class="status-dot gray"></span><span>WebSocket</span></div>
+          <div class="user-chip"><div class="user-avatar">IO</div><div><strong id="role-label">Usuario</strong><small>Sesión activa</small></div></div>
+          <button class="icon-button logout-button" id="logout-button" type="button" title="Cerrar sesión">↪</button>
+        </div>
+      </header>
+
+      <main class="content-area">
+        <section class="page active" id="page-control">
+          <div class="page-heading heading-with-actions">
+            <div><div class="eyebrow">OPERACIÓN EN TIEMPO REAL</div><h1>Centro de control</h1><p class="muted">Gestiona los movimientos y supervisa el estado de tu excavadora.</p></div>
+            <div class="vehicle-picker"><label for="vehicle-select">VEHÍCULO</label><select id="vehicle-select"><option value="">Cargando vehículos...</option></select></div>
+          </div>
+
+          <div class="metric-grid">
+            <article class="metric-card"><div class="metric-top"><span>API / BASE DE DATOS</span><span class="metric-icon purple">⌁</span></div><div class="metric-value" id="metric-api">Verificando</div><div class="metric-foot" id="metric-api-foot">Conexión con el servidor</div></article>
+            <article class="metric-card"><div class="metric-top"><span>ESTADO REGISTRADO</span><span class="metric-icon blue">◉</span></div><div class="metric-value" id="metric-device">Sin datos</div><div class="metric-foot" id="metric-device-foot">Estado guardado en RDS</div></article>
+            <article class="metric-card"><div class="metric-top"><span>ÚLTIMO COMANDO</span><span class="metric-icon orange">⌁</span></div><div class="metric-value compact" id="metric-command">—</div><div class="metric-foot" id="metric-command-foot">Esperando actividad</div></article>
+            <article class="metric-card"><div class="metric-top"><span>COMANDOS ACTIVOS</span><span class="metric-icon green">⌘</span></div><div class="metric-value" id="metric-commands">0</div><div class="metric-foot">Disponibles en el catálogo</div></article>
+          </div>
+          <div class="notice-bar" id="device-notice"><span class="notice-symbol">i</span><span>El estado de la ESP8266 mostrado aquí corresponde al último dato guardado en la API. La conexión WebSocket de este navegador se muestra por separado.</span></div>
+
+          <div class="control-layout">
+            <section class="panel control-panel">
+              <div class="panel-heading"><div><h2>Movimiento</h2><p>Selecciona una acción para enviar el comando.</p></div><span class="live-tag"><i></i> CONTROL</span></div>
+              <div class="movement-area">
+                <div class="direction-pad">
+                  <button class="move-button move-forward" data-command="AVANZAR" type="button"><span class="move-arrow">↑</span><small>AVANZAR</small></button>
+                  <button class="move-button move-left" data-command="IZQUIERDA" type="button"><span class="move-arrow">←</span><small>IZQUIERDA</small></button>
+                  <button class="move-button move-stop" data-command="DETENER" type="button"><span class="stop-square"></span><small>DETENER</small></button>
+                  <button class="move-button move-right" data-command="DERECHA" type="button"><span class="move-arrow">→</span><small>DERECHA</small></button>
+                  <button class="move-button move-back" data-command="RETROCEDER" type="button"><span class="move-arrow">↓</span><small>RETROCEDER</small></button>
+                </div>
+                <div class="control-divider"></div>
+                <div class="section-mini-title">BRAZO Y PALA</div>
+                <div class="tool-grid">
+                  <button class="tool-button" data-command="SUBIR_PALA" type="button"><span>↥</span><small>Subir brazo</small></button>
+                  <button class="tool-button" data-command="BAJAR_PALA" type="button"><span>↧</span><small>Bajar brazo</small></button>
+                  <button class="tool-button" data-command="PALA_IZQUIERDA" type="button"><span>↶</span><small>Abrir pala</small></button>
+                  <button class="tool-button" data-command="PALA_DERECHA" type="button"><span>↷</span><small>Cerrar pala</small></button>
+                </div>
+                <div class="control-divider"></div>
+                <div class="section-mini-title">FUNCIONES ADICIONALES</div>
+                <div class="extras-grid">
+                  <button class="extra-button" data-command="LUCES" type="button"><span>☼</span><small>Luces</small></button>
+                  <button class="extra-button" data-command="VELOCIDAD" type="button"><span>↯</span><small>Velocidad</small></button>
+                  <button class="extra-button" data-command="MUTE" type="button"><span>◖</span><small>Sonido</small></button>
+                  <button class="extra-button" data-command="ALEATORIO" type="button"><span>⤨</span><small>Aleatorio</small></button>
+                </div>
+                <p class="control-hint">Cada toque envía un comando. La duración del movimiento está definida en el firmware de la ESP8266.</p>
+              </div>
+            </section>
+
+            <div class="right-column">
+              <section class="panel vehicle-panel">
+                <div class="panel-heading"><div><h2>Dispositivo</h2><p id="vehicle-subtitle">Información del vehículo seleccionado.</p></div><span class="device-chip">ESP8266</span></div>
+                <div class="vehicle-visual"><div class="vehicle-glow"></div><div class="excavator-art" aria-label="Ilustración de excavadora"><div class="cab-window"></div><div class="cab-body"></div><div class="engine-body"></div><div class="track track-one"></div><div class="track track-two"></div><div class="arm-base"></div><div class="arm-main"></div><div class="arm-joint"></div><div class="arm-end"></div><div class="bucket"></div></div><div class="vehicle-visual-label"><strong id="vehicle-name-visual">Excavadora IoT</strong><small id="vehicle-model-visual">Vehículo remoto</small></div></div>
+                <div class="device-details"><div><span>Microcontrolador</span><strong id="device-mcu">ESP8266</strong></div><div><span>Identificador</span><strong id="device-id">—</strong></div><div><span>Última actualización</span><strong id="device-updated">—</strong></div></div>
+              </section>
+              <section class="panel events-panel"><div class="panel-heading"><div><h2>Actividad en vivo</h2><p>Eventos recibidos por WebSocket.</p></div><span class="event-count" id="event-count">0</span></div><div class="event-list" id="event-list"><div class="empty-state small-empty"><span>⌁</span><strong>Sin eventos todavía</strong><small>La actividad aparecerá aquí.</small></div></div></section>
+            </div>
+          </div>
+          <section class="panel catalog-panel"><div class="panel-heading"><div><h2>Catálogo de comandos</h2><p>Comandos registrados para este vehículo en la base de datos.</p></div><span class="subtle-label" id="catalog-count">0 comandos</span></div><div class="catalog-list" id="catalog-list"><div class="empty-state small-empty">Cargando catálogo...</div></div></section>
+        </section>
+
+        <section class="page" id="page-demos">
+          <div class="page-heading"><div><div class="eyebrow">MOVIMIENTOS PROGRAMADOS</div><h1>Secuencias DEMO</h1><p class="muted">Organiza una serie de movimientos y ejecútala desde la nube.</p></div></div>
+          <div class="demo-layout">
+            <section class="panel demo-list-panel"><div class="panel-heading"><div><h2>Mis secuencias</h2><p>DEMO registradas para el vehículo.</p></div><button class="secondary-button admin-only" id="new-demo-button" type="button" hidden>＋ Nueva DEMO</button></div><div id="demo-list" class="demo-list"><div class="empty-state">Cargando secuencias...</div></div></section>
+            <section class="panel demo-detail-panel"><div class="panel-heading"><div><h2 id="demo-detail-title">Selecciona una DEMO</h2><p id="demo-detail-description">Consulta sus movimientos o inicia su ejecución.</p></div><span class="subtle-label" id="demo-step-count">0 pasos</span></div><div id="demo-detail-content" class="demo-detail-content"><div class="empty-state"><span>▤</span><strong>No hay una secuencia seleccionada</strong><small>Selecciona una DEMO de la lista.</small></div></div></section>
+          </div>
+        </section>
+
+        <section class="page" id="page-history">
+          <div class="page-heading heading-with-actions"><div><div class="eyebrow">REGISTRO DE OPERACIONES</div><h1>Historial de movimientos</h1><p class="muted">Últimos 10 movimientos individuales guardados en RDS.</p></div><button class="secondary-button" id="refresh-history" type="button">↻ Actualizar</button></div>
+          <section class="panel history-panel"><div class="panel-heading"><div><h2>Actividad registrada</h2><p>Los movimientos de las secuencias DEMO no aparecen en este historial.</p></div><span class="subtle-label" id="history-total">0 registros</span></div><div class="table-wrap"><table><thead><tr><th>COMANDO</th><th>CÓDIGO</th><th>ORIGEN</th><th>FECHA Y HORA</th></tr></thead><tbody id="history-body"><tr><td colspan="4" class="table-empty">Cargando historial...</td></tr></tbody></table></div></section>
+        </section>
+
+        <section class="page" id="page-admin">
+          <div class="page-heading"><div><div class="eyebrow">CONFIGURACIÓN DEL SISTEMA</div><h1>Administración</h1><p class="muted">Gestiona vehículos y el catálogo de comandos.</p></div></div>
+          <div class="admin-grid">
+            <section class="panel admin-form-panel"><div class="panel-heading"><div><h2>Registrar vehículo</h2><p>Agrega un vehículo a la plataforma.</p></div></div><form id="vehicle-form" class="stack-form"><label>Nombre<input name="nombre" maxlength="80" placeholder="Excavadora IoT" required></label><label>Modelo<input name="modelo" maxlength="80" placeholder="Modelo X"></label><label>Microcontrolador<input name="microcontrolador" maxlength="50" value="ESP8266"></label><label>Descripción<textarea name="descripcion" maxlength="255" rows="2" placeholder="Descripción del vehículo"></textarea></label><button class="primary-button" type="submit">Guardar vehículo</button><p class="form-error" id="vehicle-form-error"></p></form></section>
+            <section class="panel admin-form-panel"><div class="panel-heading"><div><h2>Crear comando</h2><p>Agrega una orden al catálogo del vehículo seleccionado.</p></div></div><form id="command-form" class="stack-form"><label>Nombre del comando<input name="nombre" maxlength="60" placeholder="AVANZAR" required></label><label>Código numérico<input name="codigo" type="number" min="0" max="9999" placeholder="1" required></label><label>Descripción<input name="descripcion" maxlength="255" placeholder="Movimiento hacia adelante"></label><button class="primary-button" type="submit">Crear comando</button><p class="form-error" id="command-form-error"></p></form></section>
+          </div>
+          <section class="panel admin-catalog-panel"><div class="panel-heading"><div><h2>Comandos del vehículo</h2><p>Activa o elimina comandos registrados.</p></div></div><div id="admin-command-list" class="admin-command-list"><div class="empty-state small-empty">Cargando...</div></div></section>
+        </section>
+      </main>
+      <footer class="app-footer"><span>EXCAVADORA IoT <b>·</b> Centro de control</span><span>Conectado a FastAPI · Amazon RDS</span></footer>
+    </div>
+  </div>
+
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
+  <div class="modal-backdrop" id="demo-modal" hidden>
+    <div class="modal-card"><div class="modal-heading"><div><div class="eyebrow">NUEVA SECUENCIA</div><h2>Crear DEMO</h2></div><button class="icon-button" id="close-demo-modal" type="button" aria-label="Cerrar">×</button></div><form id="demo-form" class="stack-form"><label>Nombre<input name="nombre" maxlength="80" placeholder="Demo de excavación" required></label><label>Descripción<textarea name="descripcion" maxlength="255" rows="3" placeholder="Describe la secuencia"></textarea></label><div class="modal-actions"><button class="secondary-button" id="cancel-demo-modal" type="button">Cancelar</button><button class="primary-button" type="submit">Crear secuencia</button></div><p class="form-error" id="demo-form-error"></p></form></div>
+  </div>
+
+  <script src="/dashboard/assets/js/dashboard.js" defer></script>
+</body>
+</html>
