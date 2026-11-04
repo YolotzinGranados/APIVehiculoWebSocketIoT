@@ -141,7 +141,7 @@ Todos los mensajes llevan `tipo`, `id_vehiculo`, `comando`, `codigo` y `marca_te
 
 ## 6. Las 3 pruebas de Thunder Client
 
-Agrega en cada petición protegida la cabecera `X-API-Key: <tu clave control>`.
+Agrega en cada petición protegida la cabecera `Xws://44.196.22.143:8000/ws/vehiculos/1-API-Key: <tu clave control>`.
 
 1. **POST** `http://localhost:8000/vehiculos/1/movimientos` · `{"id_comando": 3}` → 201. Luego `GET .../estado`
    y `GET .../historial` muestran el cambio.
