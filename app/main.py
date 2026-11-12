@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from app.core.config import BASE_DIR, get_settings
@@ -12,7 +11,6 @@ from app.core.database import Database
 from app.core.dependencies import get_db
 from app.core.exceptions import AppError
 from app.core.stored_procedures import StoredProcedureExecutor
-from app.dashboard.router import STATIC_DIR, router as dashboard_router
 from app.models.common import ErrorValidacionResponse
 from app.routers import comandos, demos, estado, historial, vehiculos
 from app.services.demo_runner import DemoRunner
@@ -37,9 +35,6 @@ async def lifespan(app: FastAPI):
         logger.warning("DB_USER o DB_PASSWORD están vacíos en .env: la conexión a RDS fallará")
     if not (settings.api_key_admin or settings.api_key_control):
         logger.warning("API_KEY_ADMIN / API_KEY_CONTROL no configuradas: las operaciones protegidas serán rechazadas")
-    if not settings.dashboard_session_secret:
-        logger.warning("DASHBOARD_SESSION_SECRET no configurado: el login del dashboard responderá 503")
-
     db = Database(settings)
     sp = StoredProcedureExecutor(db)
     manager = WebSocketManager()
@@ -56,10 +51,10 @@ app = FastAPI(
     title="API Vehículos IoT",
     description=(
         "Control de vehículos IoT. Datos en Amazon RDS (MySQL) mediante **Stored Procedures**; "
-        "eventos en tiempo real por **WebSocket**: `ws://localhost:8000/ws/vehiculos/{id_vehiculo}`.\n\n"
-        "Las operaciones de control y las destructivas requieren `X-API-Key` o una sesión válida del dashboard."
+        "eventos en tiempo real por WebSocket en `/ws/vehiculos/{id_vehiculo}`.\n\n"
+        "Las operaciones de control y las destructivas requieren `X-API-Key`."
     ),
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan,
     responses={422: {"model": ErrorValidacionResponse, "description": "Datos de entrada inválidos"}},
     openapi_tags=[
@@ -78,8 +73,6 @@ app.include_router(estado.router)
 app.include_router(historial.router)
 app.include_router(demos.router)
 app.include_router(websocket_router.router)
-app.include_router(dashboard_router)
-app.mount("/dashboard/assets", StaticFiles(directory=str(STATIC_DIR)), name="dashboard-assets")
 
 
 @app.exception_handler(AppError)

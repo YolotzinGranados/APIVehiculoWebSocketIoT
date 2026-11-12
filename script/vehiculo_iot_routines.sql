@@ -32,7 +32,7 @@
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_actualizar_comando`(
+CREATE PROCEDURE `sp_actualizar_comando`(
 
     IN p_id_comando INT,
 
@@ -71,7 +71,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_actualizar_estado`(
+CREATE PROCEDURE `sp_actualizar_estado`(
 
     IN p_id_vehiculo INT,
 
@@ -110,7 +110,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_actualizar_movimiento_demo`(
+CREATE PROCEDURE `sp_actualizar_movimiento_demo`(
 
     IN p_id_demo_movimiento INT,
 
@@ -145,7 +145,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_actualizar_vehiculo`(
+CREATE PROCEDURE `sp_actualizar_vehiculo`(
 
     IN p_id_vehiculo INT,
 
@@ -186,7 +186,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_crear_comando`(
+CREATE PROCEDURE `sp_crear_comando`(
 
     IN p_id_vehiculo INT,
 
@@ -221,7 +221,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_crear_demo`(
+CREATE PROCEDURE `sp_crear_demo`(
 
     IN p_id_vehiculo INT,
 
@@ -254,7 +254,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_crear_vehiculo`(
+CREATE PROCEDURE `sp_crear_vehiculo`(
 
     IN p_nombre VARCHAR(80),
 
@@ -289,7 +289,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_eliminar_comando`(IN p_id_comando INT)
+CREATE PROCEDURE `sp_eliminar_comando`(IN p_id_comando INT)
 BEGIN
 
     DELETE FROM comandos WHERE id_comando=p_id_comando;
@@ -310,7 +310,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_eliminar_demo`(IN p_id_demo INT)
+CREATE PROCEDURE `sp_eliminar_demo`(IN p_id_demo INT)
 BEGIN
 
     DELETE FROM demos WHERE id_demo=p_id_demo;
@@ -331,7 +331,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_eliminar_movimiento_demo`(IN p_id_demo_movimiento INT)
+CREATE PROCEDURE `sp_eliminar_movimiento_demo`(IN p_id_demo_movimiento INT)
 BEGIN
 
     DELETE FROM demo_movimientos
@@ -354,7 +354,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_eliminar_vehiculo`(IN p_id_vehiculo INT)
+CREATE PROCEDURE `sp_eliminar_vehiculo`(IN p_id_vehiculo INT)
 BEGIN
 
     DELETE FROM vehiculos WHERE id_vehiculo=p_id_vehiculo;
@@ -375,7 +375,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_obtener_comandos_vehiculo`(IN p_id_vehiculo INT)
+CREATE PROCEDURE `sp_obtener_comandos_vehiculo`(IN p_id_vehiculo INT)
 BEGIN
 
     SELECT * FROM comandos
@@ -400,7 +400,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_obtener_demos`(IN p_id_vehiculo INT)
+CREATE PROCEDURE `sp_obtener_demos`(IN p_id_vehiculo INT)
 BEGIN
 
     SELECT * FROM demos
@@ -425,7 +425,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_obtener_estado`(IN p_id_vehiculo INT)
+CREATE PROCEDURE `sp_obtener_estado`(IN p_id_vehiculo INT)
 BEGIN
 
     SELECT e.id_vehiculo, v.nombre AS vehiculo,
@@ -458,7 +458,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_obtener_historial`(IN p_id_vehiculo INT)
+CREATE PROCEDURE `sp_obtener_historial`(IN p_id_vehiculo INT)
 BEGIN
 
     SELECT h.id_historial, h.id_vehiculo,
@@ -491,7 +491,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_obtener_movimientos_demo`(IN p_id_demo INT)
+CREATE PROCEDURE `sp_obtener_movimientos_demo`(IN p_id_demo INT)
 BEGIN
 
     SELECT dm.id_demo_movimiento, dm.orden,
@@ -524,7 +524,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_obtener_vehiculo`(IN p_id_vehiculo INT)
+CREATE PROCEDURE `sp_obtener_vehiculo`(IN p_id_vehiculo INT)
 BEGIN
 
     SELECT * FROM vehiculos WHERE id_vehiculo = p_id_vehiculo;
@@ -545,7 +545,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_obtener_vehiculos`()
+CREATE PROCEDURE `sp_obtener_vehiculos`()
 BEGIN
 
     SELECT * FROM vehiculos ORDER BY id_vehiculo;
@@ -566,7 +566,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`admin`@`localhost` PROCEDURE `sp_registrar_historial`(
+CREATE PROCEDURE `sp_registrar_historial`(
 
     IN p_id_vehiculo INT,
 

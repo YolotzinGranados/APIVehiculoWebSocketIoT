@@ -4,7 +4,7 @@ from pathlib import Path
 
 class StatusService:
     def __init__(self):
-        self.archivo = Path(__file__).resolve().parent.parent / "data" / "status.json"
+        self.archivo = Path(__file__).resolve().parent / "data" / "status.json"
 
     def obtener_estado(self):
         with open(self.archivo, "r", encoding="utf-8") as archivo:

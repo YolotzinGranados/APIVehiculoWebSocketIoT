@@ -1,4 +1,4 @@
-"""WebSocket por vehículo:  ws://localhost:8000/ws/vehiculos/{id_vehiculo}"""
+"""WebSocket por vehículo: /ws/vehiculos/{id_vehiculo}."""
 import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect

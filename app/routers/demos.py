@@ -149,7 +149,7 @@ def eliminar_movimiento(id_vehiculo: IdVehiculo, id_demo: IdDemo, id_demo_movimi
     summary="Iniciar una DEMO (se emite por WebSocket)",
     description=(
         "Valida que la demo exista, esté activa y pertenezca al vehículo, y responde **202** de inmediato: "
-        "la secuencia se emite en segundo plano por `ws://localhost:8000/ws/vehiculos/{id}` "
+        "la secuencia se emite en segundo plano por `/ws/vehiculos/{id_vehiculo}` (ws://<HOST_EC2>:8000 en el despliegue actual) "
         "(`demo_inicio`, un `demo_movimiento` por cada uno de los N movimientos y `demo_fin`).\n\n"
         "Respeta `duracion_ms` y `pausa_ms`, actualiza el último comando en RDS y **nunca escribe en el "
         "historial**. Solo una DEMO a la vez por vehículo (409 si ya hay una). Emitir un mensaje no "
