@@ -1,4 +1,19 @@
-"""Acceso a la API sin autenticación por API key."""
+"""Autorización de la API mediante claves con roles control y admin."""
+from typing import Optional
+import secrets
+
+from fastapi import Depends, Security
+from fastapi.security import APIKeyHeader
+from pydantic import SecretStr
+
+from app.core.config import Settings, get_settings
+from app.core.exceptions import ForbiddenError, ServiceUnavailableError, UnauthorizedError
+
+api_key_header = APIKeyHeader(
+    name="X-API-Key",
+    auto_error=False,
+    description="Clave de acceso. `control` para mover/DEMO; `admin` para administrar.",
+)
 
 
 def requiere_control() -> None:
@@ -6,6 +21,41 @@ def requiere_control() -> None:
     return None
 
 
-def requiere_admin() -> None:
-    """Permite operaciones administrativas sin solicitar una clave."""
-    return None
+def _coincide(recibida: str, configurada: str) -> bool:
+    return bool(configurada) and secrets.compare_digest(recibida.encode(), configurada.encode())
+
+
+def validar_api_key(api_key: Optional[str], settings: Settings) -> str:
+    """Valida una API key y devuelve el rol asociado."""
+    admin = _valor(settings.api_key_admin)
+    control = _valor(settings.api_key_control)
+    if not admin and not control:
+        raise ServiceUnavailableError(
+            "Autenticación no configurada en el servidor (define API_KEY_ADMIN y API_KEY_CONTROL)"
+        )
+    if not api_key:
+        raise UnauthorizedError("Falta la cabecera X-API-Key")
+    if _coincide(api_key, admin):
+        return "admin"
+    if _coincide(api_key, control):
+        return "control"
+    raise UnauthorizedError("API key inválida")
+
+
+def requiere_control(
+    api_key: Optional[str] = Security(api_key_header),
+    settings: Settings = Depends(get_settings),
+) -> str:
+    """Acepta una clave control o admin."""
+    return validar_api_key(api_key, settings)
+
+
+def requiere_admin(
+    api_key: Optional[str] = Security(api_key_header),
+    settings: Settings = Depends(get_settings),
+) -> str:
+    """Solo acepta una clave admin."""
+    rol = validar_api_key(api_key, settings)
+    if rol != "admin":
+        raise ForbiddenError("Esta operación requiere permisos de administrador")
+    return rol
