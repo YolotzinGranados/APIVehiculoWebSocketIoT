@@ -1,177 +1,243 @@
-# API Vehículos IoT (FastAPI + Amazon RDS + WebSocket)
+# Excavadora IoT — API FastAPI, Amazon RDS MySQL y WebSocket
 
-API local que controla vehículos IoT. Los datos viven en **Amazon RDS (MySQL, base `vehiculo_iot`)** y se
-acceden **solo mediante los 21 Stored Procedures**. Los eventos en tiempo real salen por **WebSocket**.
-Práctica 2.5: todo corre en `localhost:8000`; la migración a EC2/dominio es la práctica 2.6.
+Backend para controlar vehículos IoT. La API está construida con FastAPI; los datos persistentes
+se almacenan en Amazon RDS MySQL y la comunicación en tiempo real se realiza por WebSocket.
+El ESP8266 se conecta como cliente WebSocket y ejecuta los eventos recibidos mediante el firmware
+y los registros 74HC595.
+
+## Arquitectura y alcance real
+
+```text
+Panel / cliente HTTP
+        | POST /vehiculos/{id}/movimientos
+        v
+FastAPI (EC2) ---- Stored Procedures ---- Amazon RDS MySQL
+        |
+        | evento WebSocket por vehículo
+        v
+ESP8266 (cliente WS) ---- 74HC595 ---- motores y salidas
+```
+
+- La API utiliza 21 Stored Procedures permitidos explícitamente.
+- Los movimientos individuales actualizan estado e historial en una transacción.
+- Las DEMO actualizan el último estado, pero no escriben en el historial individual.
+- El WebSocket distribuye eventos a los clientes conectados al mismo ID de vehículo.
+- El backend no confirma que el movimiento físico haya ocurrido: enviar el evento no equivale
+  a recibir confirmación de ejecución del microcontrolador.
+- Este ZIP contiene el backend, no el firmware ESP8266 ni el código del panel. Tampoco implementa
+  AWS IoT Core/MQTT: la comunicación contemplada aquí es WebSocket directo.
 
 ## Estructura
 
-```
+```text
 Websocket_IoT/
-├── .env                 ← TUS credenciales (no se sube a Git). Se crea desde .env.example
 ├── .env.example
-├── requirements.txt / requirements-dev.txt
-├── script/              ← scripts SQL (incluye vehiculo_iot_routines_faltantes.sql)
-├── legacy/              ← código de la práctica anterior (referencia; no se ejecuta)
-├── tests/               ← pruebas automáticas (RDS simulado)
+├── requirements.txt
+├── requirements-dev.txt
+├── script/                 # volcados SQL y Stored Procedures
+├── legacy/                 # versión anterior archivada; no se usa en la API actual
+├── tests/                  # pruebas con RDS simulado en memoria
 └── app/
-    ├── main.py          ← arranque, rutas, manejo de errores
-    ├── core/            ← config, database (pool+transacciones), stored_procedures, security
-    ├── models/          ← validación de entradas y formato de salidas (Pydantic)
-    ├── repositories/    ← llaman a los SP (sin reglas de negocio)
-    ├── services/        ← reglas de negocio, movimiento individual, DemoRunner
-    ├── routers/         ← endpoints HTTP (GET/POST) documentados en Swagger
-    └── websocket/       ← gestor por vehículo, eventos y endpoint WebSocket
+    ├── main.py             # FastAPI, ciclo de vida y /health
+    ├── core/               # configuración, pool, seguridad y ejecución de SP
+    ├── models/             # validación y esquemas Pydantic
+    ├── repositories/       # acceso a Stored Procedures
+    ├── services/           # reglas de negocio y ejecución de DEMO
+    ├── routers/            # endpoints HTTP
+    └── websocket/          # eventos, conexiones y endpoint WS
 ```
 
-## 1. Preparar la base de datos (una sola vez)
+## 1. Base de datos Amazon RDS
 
-Tu `vehiculo_iot_routines.sql` trae **19 de los 21** SP. Ejecuta en tu RDS
-`script/vehiculo_iot_routines_faltantes.sql` (crea `sp_actualizar_demo` y `sp_agregar_movimiento_demo`).
-Comprueba que hay 21:
+La aplicación espera una base MySQL llamada `vehiculo_iot` con las tablas y relaciones usadas por
+los procedimientos almacenados. Los archivos `vehiculo_iot_vehiculos.sql`, `vehiculo_iot_comandos.sql`,
+`vehiculo_iot_demos.sql`, `vehiculo_iot_demo_movimientos.sql`, `vehiculo_iot_estado_vehiculo.sql` y
+`vehiculo_iot_historial_comandos.sql` son volcados de tablas con `DROP TABLE` e inserciones de ejemplo.
+
+**No ejecutes esos volcados sobre una RDS que ya contiene datos:** pueden borrar tablas y reemplazar
+registros. Consérvalos como referencia o úsalos únicamente para reconstruir una base de pruebas vacía,
+revisando antes el orden de creación y las relaciones.
+
+### Stored Procedures
+
+1. `vehiculo_iot_routines.sql` contiene 19 procedimientos.
+2. `vehiculo_iot_routines_faltantes.sql` contiene los otros 2: `sp_actualizar_demo` y
+   `sp_agregar_movimiento_demo`.
+3. En conjunto deben existir 21 procedimientos.
+
+Los scripts eliminan y recrean las rutinas con esos nombres. Ejecútalos en la base `vehiculo_iot`
+con un usuario autorizado para crear y eliminar procedimientos. Los procedimientos se crean con el
+usuario que ejecuta el script; no dependen de un `DEFINER=admin@localhost`.
+
+Verifica el total después de instalarlos:
 
 ```sql
-SELECT COUNT(*) FROM information_schema.ROUTINES
- WHERE ROUTINE_SCHEMA='vehiculo_iot' AND ROUTINE_TYPE='PROCEDURE';
+SELECT COUNT(*)
+FROM information_schema.ROUTINES
+WHERE ROUTINE_SCHEMA = 'vehiculo_iot'
+  AND ROUTINE_TYPE = 'PROCEDURE';
 ```
 
-En el Security Group de RDS, permite el puerto 3306 desde **My IP** (si cambia tu IP, actualízala).
+El resultado esperado es `21`.
 
-## 2. Instalar y ejecutar (Windows / PowerShell, desde la raíz)
+### Red de AWS
+
+- Si FastAPI corre en EC2, permite el puerto TCP `3306` en el Security Group de RDS **solo desde
+  el Security Group de esa EC2**.
+- No abras MySQL a `0.0.0.0/0`. Si haces una prueba desde tu computadora, permite temporalmente
+  tu IP pública y retírala al terminar.
+- Mantén las credenciales fuera del repositorio. En EC2 puedes inyectarlas como variables de entorno
+  o desde un gestor de secretos; la aplicación también lee un `.env` local.
+
+## 2. Configuración local
+
+Desde la raíz del proyecto, en PowerShell:
 
 ```powershell
-python -m venv .venv            # solo si aún no existe
+python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-copy .env.example .env          # y edita .env (ver abajo)
-uvicorn app.main:app --reload --port 8000
+copy .env.example .env
 ```
 
-- Swagger: http://localhost:8000/docs  ·  Salud: http://localhost:8000/health
+Edita `.env` con el endpoint, usuario y contraseña de tu RDS y genera dos claves distintas:
 
-**`.env`** (en la raíz, junto a `app/`; sin espacios alrededor del `=` ni comillas):
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 
-| Variable | Qué poner |
+Coloca una clave en `API_KEY_ADMIN` y otra en `API_KEY_CONTROL`. No reutilices las claves de ejemplo.
+
+Para ejecutar localmente:
+
+```powershell
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+- Swagger: `http://localhost:8000/docs`
+- Salud: `http://localhost:8000/health`
+- WebSocket local: `ws://localhost:8000/ws/vehiculos/1`
+
+En EC2 ejecuta sin `--reload`. La configuración actual de tu dispositivo utiliza `ws://` en el puerto
+`8000`; el firmware debe apuntar a la IP pública o DNS vigente de EC2 y al mismo `id_vehiculo`.
+
+## 3. Autorización HTTP
+
+Las consultas GET son públicas y no modifican datos. Las operaciones POST protegidas usan la cabecera
+`X-API-Key`:
+
+| Rol | Permisos |
 |---|---|
-| `DB_HOST` | Endpoint de RDS (consola AWS → RDS → tu instancia → *Endpoint*) |
-| `DB_USER` / `DB_PASSWORD` | Usuario y contraseña de RDS |
-| `API_KEY_ADMIN` / `API_KEY_CONTROL` | Claves que inventes: `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
+| `control` | Ejecutar movimientos e iniciar/cancelar DEMO |
+| `admin` | Todo lo anterior y administrar vehículos, comandos, demos y movimientos de demo |
 
-Si falla: `/health` con **503** → revisa Security Group, endpoint y credenciales (el motivo exacto sale en la
-consola de uvicorn). Si `pip` falla con Python 3.14, actualiza pip o usa Python 3.12/3.13.
+Sin clave: `401`. Clave control en una operación admin: `403`. Si no hay ninguna clave configurada:
+`503`.
 
-## 3. Autorización
+**Importante:** el endpoint WebSocket actual no exige API key ni distingue entre el ESP8266 y otros
+clientes conectados al mismo vehículo. Cualquier cliente que conozca la ruta puede suscribirse.
+La conexión `ws://` tampoco cifra el tráfico. Se conserva ese protocolo porque es el configurado
+actualmente en el firmware; este punto debe considerarse al exponer el puerto en AWS.
 
-Las consultas (GET) son públicas y **nunca modifican datos**. Lo demás exige la cabecera `X-API-Key`
-(botón **Authorize** en Swagger):
+## 4. Endpoints principales
 
-| Clave | Permite |
-|---|---|
-| `control` | POST de movimiento, iniciar y cancelar DEMO |
-| `admin` | Todo lo anterior + crear, actualizar y eliminar vehículos, comandos, demos y sus movimientos |
-
-Sin clave → **401**. Clave `control` en una operación admin → **403**. Si el servidor no tiene claves
-configuradas, las operaciones protegidas se rechazan (503).
-
-## 4. Endpoints y Stored Procedures
-
-GET = consultas; POST = escrituras, actualizaciones y acciones.
-
-| Endpoint | Auth | SP |
+| Endpoint | Autorización | Función |
 |---|---|---|
-| `GET /vehiculos` · `GET /vehiculos/{id}` | — | `sp_obtener_vehiculos`, `sp_obtener_vehiculo` (+ comandos, estado y demos) |
-| `POST /vehiculos` | admin | `sp_crear_vehiculo` |
-| `POST /vehiculos/{id}/actualizar` | admin | `sp_actualizar_vehiculo` |
-| `POST /vehiculos/{id}/eliminar` | admin | `sp_eliminar_vehiculo` |
-| `GET /vehiculos/{id}/comandos` | — | `sp_obtener_comandos_vehiculo` |
-| `POST /vehiculos/{id}/comandos` | admin | `sp_crear_comando` |
-| `POST /vehiculos/{id}/comandos/{id_comando}/actualizar` | admin | `sp_actualizar_comando` |
-| `POST /vehiculos/{id}/comandos/{id_comando}/eliminar` | admin | `sp_eliminar_comando` |
-| `GET /vehiculos/{id}/estado` | — | `sp_obtener_estado` |
-| **`POST /vehiculos/{id}/movimientos`** | control | `sp_actualizar_estado` + `sp_registrar_historial` (una transacción) |
-| `GET /vehiculos/{id}/historial` | — | `sp_obtener_historial` (máx. 10) |
-| `GET /vehiculos/{id}/demos` | — | `sp_obtener_demos` |
-| `POST /vehiculos/{id}/demos` | admin | `sp_crear_demo` |
-| `POST /vehiculos/{id}/demos/{id_demo}/actualizar` | admin | `sp_actualizar_demo` |
-| `POST /vehiculos/{id}/demos/{id_demo}/eliminar` | admin | `sp_eliminar_demo` |
-| `GET /vehiculos/{id}/demos/{id_demo}/movimientos` | — | `sp_obtener_movimientos_demo` |
-| `POST /vehiculos/{id}/demos/{id_demo}/movimientos` | admin | `sp_agregar_movimiento_demo` |
-| `POST .../movimientos/{id_mov}/actualizar` | admin | `sp_actualizar_movimiento_demo` |
-| `POST .../movimientos/{id_mov}/eliminar` | admin | `sp_eliminar_movimiento_demo` |
-| **`POST /vehiculos/{id}/demos/{id_demo}/iniciar`** | control | lectura + `sp_actualizar_estado` por movimiento (nunca historial) |
-| `POST /vehiculos/{id}/demos/cancelar` | control | `sp_actualizar_estado` (DETENER, si existe) |
+| `GET /vehiculos` | Pública | Lista vehículos; `incluir_detalle=false` omite comandos, estado y demos |
+| `GET /vehiculos/{id}` | Pública | Consulta un vehículo con su detalle |
+| `POST /vehiculos` | admin | Crea vehículo |
+| `POST /vehiculos/{id}/actualizar` | admin | Actualiza vehículo |
+| `POST /vehiculos/{id}/eliminar` | admin | Elimina vehículo y datos dependientes en cascada |
+| `GET /vehiculos/{id}/comandos` | Pública | Lista el catálogo del vehículo |
+| `POST /vehiculos/{id}/comandos` | admin | Crea un comando; no lo ejecuta |
+| `POST /vehiculos/{id}/comandos/{id_comando}/actualizar` | admin | Actualiza comando |
+| `POST /vehiculos/{id}/comandos/{id_comando}/eliminar` | admin | Elimina comando si no está usado por una DEMO |
+| `GET /vehiculos/{id}/estado` | Pública | Consulta el último estado |
+| `POST /vehiculos/{id}/movimientos` | control | Ejecuta un comando ya existente |
+| `GET /vehiculos/{id}/historial` | Pública | Devuelve hasta 10 movimientos individuales |
+| `GET /vehiculos/{id}/demos` | Pública | Lista DEMO |
+| `POST /vehiculos/{id}/demos` | admin | Crea DEMO |
+| `POST /vehiculos/{id}/demos/{id_demo}/actualizar` | admin | Actualiza DEMO |
+| `POST /vehiculos/{id}/demos/{id_demo}/eliminar` | admin | Elimina DEMO |
+| `GET /vehiculos/{id}/demos/{id_demo}/movimientos` | Pública | Consulta la secuencia |
+| `POST /vehiculos/{id}/demos/{id_demo}/movimientos` | admin | Agrega paso a la secuencia |
+| `POST .../movimientos/{id_mov}/actualizar` | admin | Actualiza paso |
+| `POST .../movimientos/{id_mov}/eliminar` | admin | Elimina paso |
+| `POST /vehiculos/{id}/demos/{id_demo}/iniciar` | control | Inicia ejecución en segundo plano; responde 202 |
+| `POST /vehiculos/{id}/demos/cancelar` | control | Cancela la DEMO activa del vehículo |
 
-### Movimiento individual
+## 5. Movimiento individual
 
-`POST /vehiculos/1/movimientos` con `{"id_comando": 3, "origen": "API"}`. Valida que el vehículo exista y esté
-activo y que el comando exista, esté activo y **sea de ese vehículo**. Actualiza estado e historial en **una
-transacción**, y solo después del COMMIT notifica por WebSocket. Si se rechaza, no cambia nada ni se emite
-evento. `conectado` se conserva (nunca se asume `true`). Ejecutar un movimiento ≠ crear un comando.
+Ejemplo de cuerpo:
 
-### Historial
+```json
+{
+  "id_comando": 12,
+  "origen": "API"
+}
+```
 
-Devuelve como máximo los 10 movimientos individuales más recientes (más reciente primero). Si hay menos, solo
-esos. RDS conserva todo. Vehículo inexistente → 404; existente sin movimientos → 200 con lista vacía.
+El `id_comando` es el identificador real que devuelve `GET /vehiculos/{id}/comandos`; no asumas que
+será `1`, `2` o `3`. Los IDs de la RDS real, los volcados SQL y el RDS simulado de las pruebas no son
+intercambiables. Si el catálogo no contiene el comando que necesitas, créalo primero con la clave admin.
 
-### DEMO
+La API valida que el vehículo esté activo y que el comando exista, esté activo y pertenezca a ese
+vehículo. Después actualiza estado e historial dentro de una transacción. Solo tras el COMMIT emite
+el evento WebSocket. Si la validación falla, no cambia datos ni emite eventos.
 
-`iniciar` responde **202** y la secuencia se emite en segundo plano: N movimientos leídos de RDS, respetando
-`duracion_ms` y `pausa_ms`. Una sola DEMO por vehículo (si no, 409). `cancelar` corta de inmediato; si el
-catálogo tiene un comando `DETENER`, queda como último comando. Las DEMO **no escriben en el historial**.
-Emitir un mensaje no confirma ejecución física (el microcontrolador se integra en otra práctica).
+El campo `conectado` se conserva al ejecutar movimientos; una petición HTTP no demuestra que el
+microcontrolador esté conectado. Actualmente el backend no actualiza ese campo al conectar o desconectar
+el ESP8266: requiere una señal de presencia identificada del dispositivo.
 
-## 5. WebSocket
+## 6. DEMO
 
-`ws://localhost:8000/ws/vehiculos/{id_vehiculo}` — varios clientes por vehículo; cada uno recibe solo los
-eventos de su vehículo. Al conectar llega el último estado. Enviar el texto `ping` responde `pong`. Vehículo
-inexistente → mensaje `error` y cierre con código 4404.
+`POST /vehiculos/{id}/demos/{id_demo}/iniciar` responde `202`. La secuencia se emite en segundo plano
+por `/ws/vehiculos/{id}` y respeta `duracion_ms` y `pausa_ms`. El backend permite una DEMO simultánea
+por vehículo **dentro de un único proceso de la API**. Las DEMO no escriben en el historial individual.
 
-Todos los mensajes llevan `tipo`, `id_vehiculo`, `comando`, `codigo` y `marca_temporal` (UTC ISO-8601):
+Si el catálogo contiene un comando `DETENER`, se utiliza al cancelar o fallar una DEMO. El ESP8266
+recibe los eventos `demo_movimiento`, `demo_cancelada` o `demo_error`; la ejecución física depende
+del firmware y de que el dispositivo esté conectado.
 
-| `tipo` | Cuándo | Campos extra |
-|---|---|---|
-| `estado_inicial` | al conectar | `conectado`, `fecha_actualizacion` |
-| `movimiento` | tras un POST de movimiento confirmado | `id_comando`, `origen` |
-| `demo_inicio` | arranca la DEMO | `id_demo`, `demo`, `total_movimientos` |
-| `demo_movimiento` | uno por cada movimiento | `orden`, `duracion_ms`, `pausa_ms` (+ campos de demo) |
-| `demo_fin` | termina normalmente | |
-| `demo_cancelada` | se canceló | `accion` (`"DETENER"` o `null`) |
-| `demo_error` | falló RDS u otro error | `mensaje`, `accion` |
-| `error`, `pong` | errores de conexión / respuesta a ping | |
+## 7. WebSocket y despliegue
 
-## 6. Las 3 pruebas de Thunder Client
+Ruta: `/ws/vehiculos/{id_vehiculo}`. El servidor envía el estado inicial y después los eventos de ese
+vehículo. El ESP8266 actual debe conectarse como cliente a `ws://<HOST_EC2>:8000/ws/vehiculos/1`.
 
-Agrega en cada petición protegida la cabecera `X-API-Key: <tu clave control>`.
+**Límite de escalabilidad actual:** `WebSocketManager` y `DemoRunner` mantienen sus conexiones y ejecuciones
+en memoria del proceso. Por eso, la configuración actual debe ejecutarse con **una sola instancia EC2
+y un solo worker Uvicorn**. Con varios workers o varias instancias, un POST puede llegar a un proceso
+distinto del que mantiene conectado al ESP8266 y el evento no se distribuirá entre procesos. Para
+escalar después hará falta coordinación compartida (por ejemplo, un broker/pub-sub) y un bloqueo
+distribuido para las DEMO.
 
-1. **POST** `http://localhost:8000/vehiculos/1/movimientos` · `{"id_comando": 3}` → 201. Luego `GET .../estado`
-   y `GET .../historial` muestran el cambio.
-2. **GET** `http://localhost:8000/vehiculos/1/historial` → máximo 10, del más reciente al más antiguo.
-3. **WebSocket** `ws://localhost:8000/ws/vehiculos/1` → conectar; en otra pestaña
-   `POST /vehiculos/1/demos/1/iniciar`. Verás `demo_inicio`, los N `demo_movimiento` y `demo_fin`. Compara
-   `GET .../historial` antes y después: no cambia. (Para tener movimientos, agrégalos antes con
-   `POST /vehiculos/1/demos/1/movimientos` usando la clave admin.)
+Si el panel web está alojado en otro origen, esta versión todavía no configura CORS: habrá que añadir
+los orígenes exactos del panel antes de consumir la API desde el navegador.
 
-## 7. Pruebas automáticas
+## 8. Pruebas
 
 ```powershell
 pip install -r requirements-dev.txt
 pytest -q
 ```
-Usan un RDS simulado en memoria (no tocan tu base) y verifican, entre otras cosas, que los 21 SP están integrados.
 
-## 8. GitHub
+Las pruebas usan `FakeRDS`, un simulador en memoria. Verifican reglas de negocio, respuestas HTTP,
+WebSocket y que los 21 nombres de SP estén integrados en la API. **No se conectan a Amazon RDS ni
+validan la sintaxis o permisos de las rutinas instaladas en AWS.** Después de desplegar, prueba también
+`/health`, las consultas y un movimiento controlado contra la RDS real.
 
-```powershell
-git init
-git add .
-git status        # comprueba que .env y .venv NO aparecen
-git commit -m "API vehículos IoT: FastAPI, RDS (21 SP) y WebSocket"
-git branch -M main
-git remote add origin https://github.com/<usuario>/<repositorio>.git
-git push -u origin main
-```
+## 9. Prueba desde Thunder Client
 
-## 9. Para la práctica 2.6 (nube)
+1. Consulta `GET http://<HOST_EC2>:8000/vehiculos/1/comandos` y localiza el `id_comando` del movimiento
+   que deseas probar.
+2. Envía `POST http://<HOST_EC2>:8000/vehiculos/1/movimientos` con `X-API-Key: <CLAVE_CONTROL>` y el
+   JSON `{"id_comando": <ID_REAL>, "origen": "API"}`.
+3. Conecta un cliente WebSocket a `ws://<HOST_EC2>:8000/ws/vehiculos/1` antes de enviar el POST para
+   observar el evento `movimiento`.
 
-El código no cambia: solo el `.env` del servidor, el Security Group de RDS (permitir el de EC2 en vez de tu
-IP), HTTPS/WSS y, si hay un frontend en otro dominio, CORS.
+No pegues la URL WebSocket dentro de la cabecera HTTP: `X-API-Key` es una cabecera independiente.
+
+## 10. Git
+
+Antes de subir el proyecto, comprueba que `.env` no esté incluido. El archivo `.env.example` sí puede
+subirse porque contiene únicamente valores de ejemplo.

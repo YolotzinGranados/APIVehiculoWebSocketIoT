@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # El .env vive en la RAÍZ del proyecto (junto a la carpeta app/), sin importar
@@ -25,9 +25,10 @@ class Settings(BaseSettings):
     db_pool_size: int = 10
     db_connect_timeout: int = 10
 
-    # Autorización por API key (si no se configuran, las operaciones protegidas se rechazan)
+    # Autorización por API key
     api_key_admin: Optional[SecretStr] = None
     api_key_control: Optional[SecretStr] = None
+
 
 
 @lru_cache

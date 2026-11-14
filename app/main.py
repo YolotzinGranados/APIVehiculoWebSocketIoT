@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
@@ -28,13 +29,13 @@ async def lifespan(app: FastAPI):
     except ValidationError as exc:
         raise RuntimeError(
             f"Configuración incompleta. Revisa el archivo {BASE_DIR / '.env'} "
-            f"(copia .env.example y complétalo):\n{exc}") from exc
+            f"(copia .env.example y complétalo):\n{exc}"
+        ) from exc
 
     if not settings.db_user or not settings.db_password.get_secret_value():
         logger.warning("DB_USER o DB_PASSWORD están vacíos en .env: la conexión a RDS fallará")
     if not (settings.api_key_admin or settings.api_key_control):
         logger.warning("API_KEY_ADMIN / API_KEY_CONTROL no configuradas: las operaciones protegidas serán rechazadas")
-
     db = Database(settings)
     sp = StoredProcedureExecutor(db)
     manager = WebSocketManager()
@@ -51,11 +52,10 @@ app = FastAPI(
     title="API Vehículos IoT",
     description=(
         "Control de vehículos IoT. Datos en Amazon RDS (MySQL) mediante **Stored Procedures**; "
-        "eventos en tiempo real por **WebSocket**: `ws://localhost:8000/ws/vehiculos/{id_vehiculo}`.\n\n"
-        "Las operaciones de control y las destructivas requieren la cabecera `X-API-Key` "
-        "(botón **Authorize**). Las consultas (GET) son públicas y no modifican datos."
+        "eventos en tiempo real por WebSocket en `/ws/vehiculos/{id_vehiculo}`.\n\n"
+        "Las operaciones de control y las destructivas requieren `X-API-Key`."
     ),
-    version="1.0.0",
+    version="1.2.0",
     lifespan=lifespan,
     responses={422: {"model": ErrorValidacionResponse, "description": "Datos de entrada inválidos"}},
     openapi_tags=[
@@ -66,6 +66,13 @@ app = FastAPI(
         {"name": "DEMO", "description": "Secuencias de N movimientos: administración, ejecución y cancelación"},
         {"name": "Sistema", "description": "Salud del servicio"},
     ],
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://yolotzingranados.github.io"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 app.include_router(vehiculos.router)
