@@ -34,8 +34,6 @@ async def lifespan(app: FastAPI):
 
     if not settings.db_user or not settings.db_password.get_secret_value():
         logger.warning("DB_USER o DB_PASSWORD están vacíos en .env: la conexión a RDS fallará")
-    if not (settings.api_key_admin or settings.api_key_control):
-        logger.warning("API_KEY_ADMIN / API_KEY_CONTROL no configuradas: las operaciones protegidas serán rechazadas")
     db = Database(settings)
     sp = StoredProcedureExecutor(db)
     manager = WebSocketManager()
