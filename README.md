@@ -241,3 +241,16 @@ No pegues la URL WebSocket dentro de la cabecera HTTP: `X-API-Key` es una cabece
 
 Antes de subir el proyecto, comprueba que `.env` no esté incluido. El archivo `.env.example` sí puede
 subirse porque contiene únicamente valores de ejemplo.
+
+
+---
+
+## Autenticación M001 (incremental)
+
+Se añadió una primera base de identidad con perfiles `admin`, `user` y `guest`.
+Consulta `docs/AUTHENTICATION_M001.md` antes de configurar o aplicar la migración.
+
+**Advertencia:** esta entrega incorpora registro de invitado, login, refresh rotatorio,
+logout y consulta `/auth/me`; todavía no integra autorización por propietario en
+todos los endpoints IoT ni autenticación del ESP8266 en WSS. No desplegar para
+operación real de vehículos hasta completar esas etapas.

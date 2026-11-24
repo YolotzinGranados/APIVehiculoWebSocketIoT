@@ -2,3 +2,4 @@ fastapi>=0.115
 uvicorn[standard]>=0.30
 mysql-connector-python>=9.0
 pydantic-settings>=2.4
+email-validator>=2.2

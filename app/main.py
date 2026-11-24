@@ -13,7 +13,7 @@ from app.core.dependencies import get_db
 from app.core.exceptions import AppError
 from app.core.stored_procedures import StoredProcedureExecutor
 from app.models.common import ErrorValidacionResponse
-from app.routers import comandos, demos, estado, historial, vehiculos
+from app.routers import auth, comandos, demos, estado, historial, vehiculos
 from app.services.demo_runner import DemoRunner
 from app.websocket import router as websocket_router
 from app.websocket.websocket_manager import WebSocketManager
@@ -51,7 +51,9 @@ app = FastAPI(
     description=(
         "Control de vehículos IoT. Datos en Amazon RDS (MySQL) mediante **Stored Procedures**; "
         "eventos en tiempo real por WebSocket en `/ws/vehiculos/{id_vehiculo}`.\n\n"
-        "Las operaciones de control y las destructivas requieren `X-API-Key`."
+        "M001 incorpora autenticación de usuarios en `/auth`. La autorización por propietario "
+        "de cada recurso y la autenticación de dispositivos WSS siguen pendientes; no operar "
+        "vehículos en producción hasta completar esas etapas."
     ),
     version="1.2.0",
     lifespan=lifespan,
@@ -69,10 +71,12 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://yolotzingranados.github.io"],
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token"],
+    allow_credentials=True,
 )
 
+app.include_router(auth.router)
 app.include_router(vehiculos.router)
 app.include_router(comandos.router)
 app.include_router(estado.router)

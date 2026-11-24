@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     api_key_admin: Optional[SecretStr] = None
     api_key_control: Optional[SecretStr] = None
 
+    # Autenticación de usuarios (M001). Se mantiene opcional durante la transición;
+    # los endpoints /auth devuelven 503 hasta configurar el secreto.
+    auth_secret_key: Optional[SecretStr] = None
+    auth_access_ttl_minutes: int = 10
+    auth_refresh_ttl_days: int = 14
+
 
 
 @lru_cache
