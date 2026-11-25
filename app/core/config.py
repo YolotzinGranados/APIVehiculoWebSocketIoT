@@ -1,19 +1,20 @@
-"""Configuración de la aplicación, leída desde variables de entorno / .env."""
+
+"""Configuración central de FastAPI y Amazon RDS."""
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-from pydantic import Field, SecretStr
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# El .env vive en la RAÍZ del proyecto (junto a la carpeta app/), sin importar
-# desde qué carpeta se ejecute uvicorn.
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=BASE_DIR / ".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     # Amazon RDS
@@ -25,16 +26,18 @@ class Settings(BaseSettings):
     db_pool_size: int = 10
     db_connect_timeout: int = 10
 
-    # Autorización por API key
+    # API Keys heredadas
     api_key_admin: Optional[SecretStr] = None
     api_key_control: Optional[SecretStr] = None
 
-    # Autenticación de usuarios (M001). Se mantiene opcional durante la transición;
-    # los endpoints /auth devuelven 503 hasta configurar el secreto.
+    # Autenticación de usuarios
     auth_secret_key: Optional[SecretStr] = None
     auth_access_ttl_minutes: int = 10
     auth_refresh_ttl_days: int = 14
 
+    # Cookies de sesión
+    auth_refresh_cookie_name: str = "iot_refresh"
+    auth_csrf_cookie_name: str = "iot_csrf"
 
 
 @lru_cache
